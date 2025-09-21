@@ -116,7 +116,6 @@ const api = axios.create({
 
 const retryRequest = (config, retryCount = 0) => {
   return new Promise((resolve, reject) => {
-    const maxRetries = config.retries || 5;
     const delay = config.retryDelay ? config.retryDelay(retryCount) : Math.pow(2, retryCount) * 1000;
     
     // Retry request with exponential backoff
@@ -207,17 +206,17 @@ api.interceptors.response.use(
     const maxRetries = config?.retries || 5;
     
     
-    const errorContext = {
-      method: config?.method?.toUpperCase(),
-      url: config?.url,
-      duration: `${duration}ms`,
-      status: response?.status,
-      statusText: response?.statusText,
-      retryCount: retryCount,
-      maxRetries: maxRetries,
-      error: response?.data?.error || error.message,
-      code: error.code
-    };
+    // const errorContext = {
+    //   method: config?.method?.toUpperCase(),
+    //   url: config?.url,
+    //   duration: `${duration}ms`,
+    //   status: response?.status,
+    //   statusText: response?.statusText,
+    //   retryCount: retryCount,
+    //   maxRetries: maxRetries,
+    //   error: response?.data?.error || error.message,
+    //   code: error.code
+    // };
     
     // Error logging handled by response handlers
 
@@ -257,7 +256,7 @@ api.interceptors.response.use(
       
       
       if (response?.status >= 500 || !response || error.code === 'ECONNABORTED') {
-        const errorType = !response ? 'Network' : error.code === 'ECONNABORTED' ? 'Timeout' : 'Server';
+        // const errorType = !response ? 'Network' : error.code === 'ECONNABORTED' ? 'Timeout' : 'Server';
         // Error - retrying
         
         return retryRequest(config, retryCount);

@@ -133,6 +133,75 @@ export const NotificationProvider = ({ children }) => {
   const socketRef = useRef(null);
   const userRef = useRef(null);
 
+  const getNotificationTitle = useCallback((notification) => {
+    switch (notification.type) {
+      case NOTIFICATION_TYPES.VOTE:
+        return '🗳️ New Vote on Your Poll';
+      case NOTIFICATION_TYPES.COMMENT:
+        return '💬 New Comment on Your Poll';
+      case NOTIFICATION_TYPES.REPLY:
+        return '↩️ Reply to Your Comment';
+      case NOTIFICATION_TYPES.COMMENT_LIKE:
+        return '👍 Someone Liked Your Comment';
+      case NOTIFICATION_TYPES.POLL_CREATED:
+        return '📊 Poll Created Successfully';
+      case NOTIFICATION_TYPES.POLL_CLOSED:
+        return '🔒 Poll Closed';
+      case NOTIFICATION_TYPES.SYSTEM:
+        return '🔔 PollSpace Notification';
+      default:
+        return '🔔 New Notification';
+    }
+  }, []);
+
+  const addNotification = useCallback((notification) => {
+    dispatch({ type: NOTIFICATION_ACTIONS.ADD_NOTIFICATION, payload: notification });
+  }, [dispatch]);
+
+  const markAsRead = useCallback(async (notificationId) => {
+    try {
+      await api.patch(`/notifications/${notificationId}/read`);
+
+      dispatch({ type: NOTIFICATION_ACTIONS.MARK_AS_READ, payload: { id: notificationId } });
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+      dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: error.message });
+    }
+  }, [dispatch]);
+
+  const showBrowserNotification = useCallback((notification) => {
+    try {
+      const title = getNotificationTitle(notification);
+      const options = {
+        body: notification.message || notification.content,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: notification.id,
+        requireInteraction: false,
+        silent: false
+      };
+
+      const browserNotification = new Notification(title, options);
+      
+      browserNotification.onclick = () => {
+        window.focus();
+        browserNotification.close();
+        // Navigate to relevant page based on notification type
+        if (notification.pollId) {
+          window.location.href = `/poll/${notification.pollId}`;
+        }
+      };
+
+      // Auto-close after 5 seconds
+      setTimeout(() => {
+        browserNotification.close();
+      }, 5000);
+
+    } catch (error) {
+      console.error('Failed to show browser notification:', error);
+    }
+  }, [getNotificationTitle]);
+
   const initializeSocket = useCallback((token) => {
     try {
       // Clean up existing socket first
@@ -152,7 +221,7 @@ export const NotificationProvider = ({ children }) => {
         forceNew: true
       });
 
-socketRef.current.on('connect', () => {
+      socketRef.current.on('connect', () => {
         console.log('✅ Notifications socket connected');
         dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: null });
         if (userRef.current?.id) {
@@ -182,7 +251,7 @@ socketRef.current.on('connect', () => {
       });
 
       // Listen for new notifications
-socketRef.current.on('newNotification', (notification) => {
+      socketRef.current.on('newNotification', (notification) => {
         console.log('🔔 New notification received:', notification);
         console.log('🔔 Notification type:', notification.type);
         console.log('🔔 Notification message:', notification.message);
@@ -210,7 +279,7 @@ socketRef.current.on('newNotification', (notification) => {
       console.error('Failed to initialize socket:', error);
       dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: error.message });
     }
-  }, []);
+  }, [showBrowserNotification, addNotification, markAsRead, dispatch]);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -218,7 +287,7 @@ socketRef.current.on('newNotification', (notification) => {
       
       const response = await api.get('/notifications');
 
-const data = Array.isArray(response.data) ? response.data : (response.data.notifications || []);
+      const data = Array.isArray(response.data) ? response.data : (response.data.notifications || []);
       dispatch({ 
         type: NOTIFICATION_ACTIONS.SET_NOTIFICATIONS, 
         payload: data
@@ -227,7 +296,7 @@ const data = Array.isArray(response.data) ? response.data : (response.data.notif
       console.error('Failed to fetch notifications:', error);
       dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: error.message });
     }
-  }, []);
+  }, [dispatch]);
 
   // Initialize socket connection
   useEffect(() => {
@@ -254,77 +323,7 @@ const data = Array.isArray(response.data) ? response.data : (response.data.notif
     };
   }, [initializeSocket, fetchNotifications]);
 
-  const showBrowserNotification = (notification) => {
-    try {
-      const title = getNotificationTitle(notification);
-      const options = {
-        body: notification.message || notification.content,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        tag: notification.id,
-        requireInteraction: false,
-        silent: false
-      };
-
-      const browserNotification = new Notification(title, options);
-      
-      browserNotification.onclick = () => {
-        window.focus();
-        browserNotification.close();
-        // Navigate to relevant page based on notification type
-if (notification.pollId) {
-          window.location.href = `/poll/${notification.pollId}`;
-        }
-      };
-
-      // Auto-close after 5 seconds
-      setTimeout(() => {
-        browserNotification.close();
-      }, 5000);
-
-    } catch (error) {
-      console.error('Failed to show browser notification:', error);
-    }
-  };
-
-  const getNotificationTitle = (notification) => {
-    switch (notification.type) {
-      case NOTIFICATION_TYPES.VOTE:
-        return '🗳️ New Vote on Your Poll';
-      case NOTIFICATION_TYPES.COMMENT:
-        return '💬 New Comment on Your Poll';
-      case NOTIFICATION_TYPES.REPLY:
-        return '↩️ Reply to Your Comment';
-      case NOTIFICATION_TYPES.COMMENT_LIKE:
-        return '👍 Someone Liked Your Comment';
-      case NOTIFICATION_TYPES.POLL_CREATED:
-        return '📊 Poll Created Successfully';
-      case NOTIFICATION_TYPES.POLL_CLOSED:
-        return '🔒 Poll Closed';
-      case NOTIFICATION_TYPES.SYSTEM:
-        return '🔔 PollSpace Notification';
-      default:
-        return '🔔 New Notification';
-    }
-  };
-
-
-  const addNotification = (notification) => {
-    dispatch({ type: NOTIFICATION_ACTIONS.ADD_NOTIFICATION, payload: notification });
-  };
-
-  const markAsRead = async (notificationId) => {
-    try {
-      await api.patch(`/notifications/${notificationId}/read`);
-
-      dispatch({ type: NOTIFICATION_ACTIONS.MARK_AS_READ, payload: { id: notificationId } });
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error);
-      dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: error.message });
-    }
-  };
-
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       await api.patch('/notifications/mark-all-read');
 
@@ -333,9 +332,9 @@ if (notification.pollId) {
       console.error('Failed to mark all notifications as read:', error);
       dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: error.message });
     }
-  };
+  }, [dispatch]);
 
-  const deleteNotification = async (notificationId) => {
+  const deleteNotification = useCallback(async (notificationId) => {
     try {
       await api.delete(`/notifications/${notificationId}`);
 
@@ -344,9 +343,9 @@ if (notification.pollId) {
       console.error('Failed to delete notification:', error);
       dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: error.message });
     }
-  };
+  }, [dispatch]);
 
-  const clearAllNotifications = async () => {
+  const clearAllNotifications = useCallback(async () => {
     try {
       await api.delete('/notifications/clear-all');
 
@@ -355,9 +354,9 @@ if (notification.pollId) {
       console.error('Failed to clear all notifications:', error);
       dispatch({ type: NOTIFICATION_ACTIONS.SET_ERROR, payload: error.message });
     }
-  };
+  }, [dispatch]);
 
-  const requestNotificationPermission = async () => {
+  const requestNotificationPermission = useCallback(async () => {
     try {
       if ('Notification' in window) {
         const permission = await Notification.requestPermission();
@@ -368,7 +367,7 @@ if (notification.pollId) {
       console.error('Failed to request notification permission:', error);
       return false;
     }
-  };
+  }, []);
 
   const value = {
     ...state,

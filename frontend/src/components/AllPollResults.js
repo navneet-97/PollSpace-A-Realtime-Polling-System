@@ -1,17 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  BarChart3, 
-  Users, 
-  Clock, 
-  CheckCircle,
-  XCircle,
-  Eye,
-  EyeOff,
-  Search,
-  PieChart,
-  Activity
-} from 'lucide-react';
+import { Search, CheckCircle, XCircle, Eye, EyeOff, Clock, Users, BarChart3, Activity, PieChart } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
 import PageHeader from './PageHeader';
@@ -23,8 +12,6 @@ const AllPollResults = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-
-  const user = JSON.parse(sessionStorage.getItem('user') || '{}');
 
   useEffect(() => {
     fetchAllPolls();
@@ -57,27 +44,7 @@ const AllPollResults = () => {
     };
   }, []);
 
-  useEffect(() => {
-    filterPolls();
-  }, [polls, searchTerm, statusFilter, categoryFilter]);
-
-  const fetchAllPolls = async () => {
-    try {
-      // Use the special endpoint for poll results page
-      const response = await api.get('/polls/results');
-      const allPolls = response.data;
-      
-      // The backend now handles filtering correctly for the results page
-      setPolls(allPolls);
-    } catch (error) {
-      console.error('Error fetching polls:', error);
-      toast.error('Failed to load poll results');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterPolls = () => {
+  const filterPolls = useCallback(() => {
     let filtered = polls;
 
     // Search filter
@@ -99,6 +66,26 @@ const AllPollResults = () => {
     }
 
     setFilteredPolls(filtered);
+  }, [polls, searchTerm, statusFilter, categoryFilter]);
+
+  useEffect(() => {
+    filterPolls();
+  }, [filterPolls]);
+
+  const fetchAllPolls = async () => {
+    try {
+      // Use the special endpoint for poll results page
+      const response = await api.get('/polls/results');
+      const allPolls = response.data;
+      
+      // The backend now handles filtering correctly for the results page
+      setPolls(allPolls);
+    } catch (error) {
+      console.error('Error fetching polls:', error);
+      toast.error('Failed to load poll results');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const calculatePercentage = (votes, total) => {

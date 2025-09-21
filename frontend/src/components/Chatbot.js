@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageCircle, Send, X, Minimize2, Maximize2, Bot, User, Trash2 } from 'lucide-react';
 import api from '../utils/api';
 
@@ -12,6 +12,18 @@ const Chatbot = () => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const STORAGE_KEY = 'pollspace_chat_history';
+
+  const initializeChat = useCallback(() => {
+    const welcomeMessage = {
+      id: 'welcome',
+      content: "👋 Hi! I'm your PollSpace assistant! Ask me anything about polls, voting, using the platform.",
+      isBot: true,
+      timestamp: new Date()
+    };
+    setMessages([welcomeMessage]);
+    // Scroll to bottom when initializing
+    setTimeout(() => scrollToBottom(), 200);
+  }, []);
 
   useEffect(() => {
     // Load chat history from localStorage
@@ -27,7 +39,7 @@ const Chatbot = () => {
     } else {
       initializeChat();
     }
-  }, []);
+  }, [initializeChat]);
 
   useEffect(() => {
     // Save chat history to localStorage whenever messages change
@@ -56,18 +68,6 @@ const Chatbot = () => {
       setTimeout(() => scrollToBottom(), 100);
     }
   }, [isMinimized, isOpen]);
-
-    const initializeChat = () => {
-      const welcomeMessage = {
-        id: 'welcome',
-        content: "👋 Hi! I'm your PollSpace assistant! Ask me anything about polls, voting, using the platform.",
-        isBot: true,
-        timestamp: new Date()
-      };
-      setMessages([welcomeMessage]);
-      // Scroll to bottom when initializing
-      setTimeout(() => scrollToBottom(), 200);
-    };
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {

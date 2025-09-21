@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, Calendar, Settings, AlertCircle, Info } from 'lucide-react';
+import { Plus, X, Calendar, Settings, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
 import PageHeader from './PageHeader';

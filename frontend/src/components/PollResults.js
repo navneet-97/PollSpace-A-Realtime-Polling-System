@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -27,11 +27,7 @@ const PollResults = () => {
 
   const user = JSON.parse(sessionStorage.getItem('user') || '{}');
 
-  useEffect(() => {
-    fetchPollResults();
-  }, [id]);
-
-  const fetchPollResults = async () => {
+  const fetchPollResults = useCallback(async () => {
     try {
       const response = await api.get(`/polls/${id}`);
       const pollData = response.data;
@@ -53,7 +49,11 @@ const PollResults = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, user.id]);
+
+  useEffect(() => {
+    fetchPollResults();
+  }, [fetchPollResults]);
 
   const handleBackNavigation = () => {
     const referrer = location.state?.from;
@@ -216,7 +216,7 @@ const PollResults = () => {
     
     // Generate paths and labels
     adjustedSegments.forEach(segment => {
-      const { option, index, percentage, adjustedAngle } = segment;
+      const { index, percentage, adjustedAngle } = segment;
       
       const startAngle = cumulativeAngle;
       const endAngle = startAngle + adjustedAngle;
@@ -284,7 +284,7 @@ const PollResults = () => {
     
     // Generate options list for HTML report
     const generateOptionsListHTML = (options) => {
-      const total = options.reduce((sum, option) => sum + option.votes, 0);
+      const total = options.reduce((sum, _option) => sum + _option.votes, 0);
       const colors = [
         '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', 
         '#ef4444', '#ec4899', '#6366f1', '#06b6d4'
@@ -292,16 +292,16 @@ const PollResults = () => {
       
       return `
         <div style="width: 100%;">
-          ${options.map((option, index) => {
-            const percentage = total > 0 ? Math.round((option.votes / total) * 100) : 0;
+          ${options.map((_option, index) => {
+            const percentage = total > 0 ? Math.round((_option.votes / total) * 100) : 0;
             return `
               <div style="display: flex; align-items: center; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; background-color: #fafafa;">
                 <div style="width: 16px; height: 16px; border-radius: 50%; background-color: ${colors[index % colors.length]}; margin-right: 12px;"></div>
                 <div style="flex: 1; font-family: Arial, sans-serif; font-size: 14px; font-weight: 500; color: #111827;">
-                  ${option.text}
+                  ${_option.text}
                 </div>
                 <div style="font-family: Arial, sans-serif; font-size: 14px; color: #6b7280; margin-right: 12px;">
-                  ${option.votes} votes
+                  ${_option.votes} votes
                 </div>
                 <div style="font-family: Arial, sans-serif; font-size: 14px; font-weight: 600; color: #111827;">
                   ${percentage}%
@@ -561,6 +561,7 @@ const PollResults = () => {
   };
 
   // Function to download charts as SVG
+  /*
   const downloadChart = (chartType) => {
     if (!poll) return;
     
@@ -587,6 +588,7 @@ const PollResults = () => {
       console.error('Chart download error:', error);
     }
   };
+  */
 
   // Function to generate chart SVG for HTML export (no download functionality)
   const generateChartForExport = (chartType) => {
