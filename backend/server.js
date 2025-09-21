@@ -2362,19 +2362,20 @@ async function checkDatabaseHealth() {
 // Apply enhanced error handling middleware
 app.use(errorHandler);
 
-// Serve frontend static build (non-API)
-const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');
-if (fs.existsSync(frontendBuildPath)) {
-  app.use(express.static(frontendBuildPath));
-  // For any non-API route, serve index.html (SPA fallback)
-  app.get(/^\/(?!api).*/, (req, res) => {
-    res.sendFile(path.join(frontendBuildPath, 'index.html'));
-  });
-}
+// The backend should only serve API endpoints
 
 // 404 handler for API routes only
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
+});
+
+// For all other routes, return a simple message indicating this is the API server
+app.get('*', (req, res) => {
+  res.status(200).json({ 
+    message: 'PollSpace API Server', 
+    version: '1.0.0',
+    documentation: '/api/docs (coming soon)' 
+  });
 });
 
 const PORT = process.env.PORT || 8001;
