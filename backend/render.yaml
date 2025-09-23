@@ -8,7 +8,7 @@ services:
       - key: MONGO_URL
         sync: false
       - key: CORS_ORIGINS
-        value: https://poll-space-a-realtime-polling-system-hdo8ecdxw.vercel.app
+        value: https://poll-space.vercel.app
       - key: JWT_SECRET
         sync: false
       - key: GEMINI_API_KEY

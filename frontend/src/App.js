@@ -201,7 +201,6 @@ function App() {
             visibleToasts={4}
             duration={4000}
             closeButton={true}
-            theme="light"
             toastOptions={{
               style: {
                 padding: '16px',

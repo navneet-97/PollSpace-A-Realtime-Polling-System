@@ -5,15 +5,23 @@ import { toast } from 'sonner';
 import api from '../utils/api';
 import PageHeader from './PageHeader';
 
-const formatDateForInput = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  // Format to local timezone for datetime-local input
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
+// Helper function to convert datetime-local input value to proper format for backend
+const formatInputForBackend = (inputValue) => {
+  if (!inputValue) return null;
+  
+  // The datetime-local input returns a string in YYYY-MM-DDTHH:mm format
+  // We need to parse it and send it to the backend as-is
+  return new Date(inputValue).toISOString();
+};
+
+// Helper function to get current time formatted for min attribute
+const getCurrentTimeForMin = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
@@ -143,12 +151,19 @@ const CreatePoll = ({ socket }) => {
       newErrors.options = 'All options must be unique';
     }
 
-    // End date validation
+    // End date validation - fixed to properly handle timezone
     if (formData.ends_at) {
+      // When the form is submitted, the datetime-local value is treated as local time
+      // We need to compare it properly with the current time
       const endDate = new Date(formData.ends_at);
       const now = new Date();
-      if (endDate <= now) {
-        newErrors.ends_at = 'End date must be in the future';
+      
+      // For validation purposes, we just need to ensure the end date is in the future
+      // Adding a small buffer (1 minute) to account for potential time differences
+      const bufferTime = new Date(now.getTime() + 60000); // 1 minute from now
+      
+      if (endDate < bufferTime) {
+        newErrors.ends_at = 'End date must be in the future (at least 1 minute from now)';
       }
     }
 
@@ -175,7 +190,7 @@ const CreatePoll = ({ socket }) => {
         description: formData.description.trim(),
         category: formData.category,
         status: formData.status,
-        ends_at: formData.ends_at || null,
+        ends_at: formData.ends_at ? formatInputForBackend(formData.ends_at) : null,
         allow_multiple_votes: formData.allow_multiple_votes,
         show_results: formData.show_results, // Include result visibility
         options: formData.options
@@ -420,7 +435,7 @@ const CreatePoll = ({ socket }) => {
                 value={formData.ends_at}
                 onChange={handleInputChange}
                 className={`input ${errors.ends_at ? 'border-red-300 focus:ring-red-500' : ''}`}
-                min={formatDateForInput(new Date())}
+                min={getCurrentTimeForMin()}
               />
               {errors.ends_at && (
                 <p className="mt-1 text-sm text-red-600 flex items-center">

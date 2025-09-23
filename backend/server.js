@@ -2038,6 +2038,7 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
     
     SOCIAL FEATURES:
     - Comment system with threaded replies
+    - Comment system with threaded replies
     - Like/dislike comments
     - Real-time comment updates
     - Share polls via social media or copy links
@@ -2059,14 +2060,6 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
     - Filter polls by status (active, closed, draft)
     - Sort polls by creation date or popularity
     - View all public poll results in one place
-    
-    DARK MODE:
-    - Toggle between light and dark themes using the theme switcher in the header or sidebar
-    - Dark mode reduces eye strain in low-light environments
-    - All UI elements automatically adapt to the dark theme
-    - Theme preference is saved and applied on future visits
-    - Perfect for comfortable nighttime use
-    - Access the theme switcher from the user profile section in the sidebar or from the header navigation
     
     MOBILE & ACCESSIBILITY:
     - Fully responsive design works on all devices
