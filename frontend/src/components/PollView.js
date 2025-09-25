@@ -214,8 +214,6 @@ const PollView = ({ socket }) => {
   // Sync comment count with backend when comments change
   useEffect(() => {
     if (poll && comments.length > 0 && poll.comments_count !== comments.length) {
-      console.log(`🔄 Syncing comment count: DB shows ${poll.comments_count}, actual is ${comments.length}`);
-      
       setPoll(prev => prev ? { ...prev, comments_count: comments.length } : prev);
     }
   }, [comments.length, poll?.comments_count, poll]);
@@ -397,11 +395,8 @@ const PollView = ({ socket }) => {
     setLikingComments(prev => new Set([...prev, commentId]));
 
     try {
-      console.log('🔄 Liking comment:', commentId);
       const response = await api.post(`/comments/${commentId}/like`);
       const { likes, hasLiked, message } = response.data;
-      
-      console.log('✅ Like response:', { likes, hasLiked, message });
       
       // Update comment like count and user's like status locally
       setComments(prev => 
@@ -423,7 +418,7 @@ const PollView = ({ socket }) => {
       toast.success(hasLiked ? 'Comment liked!' : 'Comment unliked!');
 
     } catch (error) {
-      console.error('❌ Error liking comment:', error);
+      console.error('Error liking comment:', error);
       toast.error('Failed to like comment');
     } finally {
       setLikingComments(prev => {
@@ -452,7 +447,6 @@ const PollView = ({ socket }) => {
     setDeletingComments(prev => new Set([...prev, commentId]));
 
     try {
-      console.log('🗑️ Deleting comment:', commentId);
       await api.delete(`/comments/${commentId}`);
       
       
@@ -489,7 +483,7 @@ const PollView = ({ socket }) => {
       toast.success('Comment deleted successfully!');
 
     } catch (error) {
-      console.error('❌ Error deleting comment:', error);
+      console.error('Error deleting comment:', error);
       const message = error.response?.data?.error || 'Failed to delete comment';
       toast.error(message);
     } finally {

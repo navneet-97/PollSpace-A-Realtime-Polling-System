@@ -749,8 +749,6 @@ app.get('/api/polls/results', authenticateToken, async (req, res) => {
         poll.comments_count = actualCommentCount;
         await poll.save();
         
-        console.log(`📊 Poll "${poll.title}" - Comment count updated to: ${actualCommentCount}`);
-        
         return poll;
       })
     );
@@ -780,8 +778,6 @@ app.get('/api/polls/dashboard', authenticateToken, async (req, res) => {
         poll.comments_count = actualCommentCount;
         await poll.save();
         
-        console.log(`📊 Poll "${poll.title}" - Comment count updated to: ${actualCommentCount}`);
-        
         return poll;
       })
     );
@@ -806,8 +802,6 @@ app.get('/api/polls/my-polls', authenticateToken, async (req, res) => {
         // Force update comment count regardless of current value
         poll.comments_count = actualCommentCount;
         await poll.save();
-        
-        console.log(`📊 My Poll "${poll.title}" - Comment count updated to: ${actualCommentCount}`);
         
         return poll;
       })
@@ -837,8 +831,6 @@ app.get('/api/polls/voted', authenticateToken, async (req, res) => {
         // Force update comment count regardless of current value
         poll.comments_count = actualCommentCount;
         await poll.save();
-        
-        console.log(`📊 Voted Poll "${poll.title}" - Comment count updated to: ${actualCommentCount}`);
         
         return poll;
       })
@@ -881,8 +873,6 @@ app.get('/api/polls/:id', async (req, res) => {
     poll.comments_count = actualCommentCount;
     await poll.save();
     
-    console.log(`📊 Single Poll "${poll.title}" - Comment count updated to: ${actualCommentCount}`);
-
     res.json(poll);
   } catch (error) {
     console.error('Get poll error:', error);
@@ -984,13 +974,11 @@ app.patch('/api/polls/:id', authenticateToken, async (req, res) => {
       poll.manual_status_override = true;
       // Always clear end date when reactivating a poll
       poll.ends_at = null;
-      console.log(`🔄 Reopening poll "${poll.title}" - End date cleared, manual override enabled`);
     } else if (status === 'closed') {
       // User is manually closing poll - set override flag to true
       poll.manual_status_override = true;
       // Clear the end date when poll is manually closed
       poll.ends_at = null;
-      console.log(`🔒 Manually closing poll "${poll.title}" - Manual override enabled`);
     }
 
     poll.status = status;
@@ -1075,7 +1063,6 @@ app.put('/api/polls/:id', authenticateToken, async (req, res) => {
         poll.status = 'active';
         // Set manual_status_override to true since it's now being manually managed
         poll.manual_status_override = true;
-        console.log(`🔄 Reactivating automatically closed poll "${poll.title}" - New end date: ${newEndDate.toISOString()}`);
       }
     }
     
@@ -1340,8 +1327,6 @@ app.post('/api/comments', authenticateToken, async (req, res) => {
     poll.comments_count = actualCommentCount;
     await poll.save();
     
-    console.log(`📝 Comment added to poll "${poll.title}": ${actualCommentCount} total comments (parent + replies)`);
-
     // Create notification for poll creator (if not the same user)
     if (poll.creator !== req.user.id) {
       const notificationType = parent_comment_id ? 'reply' : 'comment';
@@ -1398,40 +1383,24 @@ app.post('/api/comments/:id/like', authenticateToken, async (req, res) => {
       
       // Create notification for comment author (only if someone else liked their comment)
       if (comment.user !== req.user.id) {
-        console.log('🔔 Creating comment like notification - Liker:', req.user.username, 'Comment author:', comment.user);
-        console.log('🔔 Comment details - Poll ID:', comment.poll_id, 'Comment ID:', comment.id);
-        
         // Get the poll information for the notification
         const poll = await Poll.findOne({ id: comment.poll_id });
         if (poll) {
-          console.log('🔔 Poll found:', poll.title);
           const notificationResult = await createNotification('comment_like', {
             likerName: req.user.username,
             pollTitle: poll.title,
             pollId: comment.poll_id,
             commentId: comment.id
           }, comment.user);
-          console.log('✅ Comment like notification created:', notificationResult ? 'Success' : 'Failed');
           
           if (notificationResult) {
-            console.log('🔔 Notification details:', {
-              id: notificationResult.id,
-              userId: notificationResult.userId,
-              type: notificationResult.type,
-              message: notificationResult.message
-            });
-            
             // Check socket room
             const userRoom = `user_${comment.user}`;
             const sockets = io.sockets.adapter.rooms;
             const roomSockets = sockets.get(userRoom);
-            console.log('🔔 Socket room', userRoom, 'has', roomSockets ? roomSockets.size : 0, 'connected sockets');
           }
-        } else {
-          console.log('❌ Poll not found for comment like notification');
-        }
+        } 
       } else {
-        console.log('⏭️ Skipping notification - user liked their own comment');
       }
       
       res.json({ 
@@ -1489,7 +1458,6 @@ app.delete('/api/comments/:id', authenticateToken, async (req, res) => {
       poll.comments_count = actualCommentCount;
       await poll.save();
       
-      console.log(`🗿 Comment deleted from poll "${poll.title}": ${actualCommentCount} total comments remaining (parent + replies)`);
     }
 
     // Emit real-time update
@@ -1620,9 +1588,6 @@ app.delete('/api/notifications/clear-all', authenticateToken, async (req, res) =
 // Notification helper function
 const createNotification = async (type, data, userId) => {
   try {
-    console.log('📢 Creating notification:', type, 'for user:', userId);
-    console.log('📢 Notification data:', data);
-    
     const notification = new Notification({
       id: generateId(),
       userId,
@@ -1634,23 +1599,15 @@ const createNotification = async (type, data, userId) => {
     });
 
     const savedNotification = await notification.save();
-    console.log('✅ Notification saved to database:', savedNotification.id);
     
     const targetRoom = `user_${userId}`;
-    console.log('✅ Emitting to room:', targetRoom);
-    
-    // Check if room has connected sockets
-    const sockets = io.sockets.adapter.rooms;
-    const roomSockets = sockets.get(targetRoom);
-    console.log('📡 Room', targetRoom, 'has', roomSockets ? roomSockets.size : 0, 'connected sockets');
     
     // Emit real-time notification (frontend listens for 'newNotification')
     io.to(targetRoom).emit('newNotification', savedNotification);
-    console.log('📡 Notification emitted via socket');
 
     return savedNotification;
   } catch (error) {
-    console.error('❌ Create notification error:', error);
+    console.error('Create notification error:', error);
     return null;
   }
 };
@@ -1718,9 +1675,6 @@ app.patch('/api/user/profile', authenticateToken, upload.single('profilePicture'
 
     // Handle profile picture removal
     if (removeProfilePicture) {
-      console.log('Removing profile picture for user:', user.id);
-      console.log('Current profile_picture value:', user.profile_picture);
-      
       // Delete old profile picture if exists
       if (user.profile_picture) {
         try {
@@ -1740,27 +1694,20 @@ app.patch('/api/user/profile', authenticateToken, upload.single('profilePicture'
           if (filename) {
             const uploadsDir = path.join(__dirname, 'uploads');
             const oldPath = path.join(uploadsDir, filename);
-            console.log('Attempting to delete file at path:', oldPath);
             
             if (fs.existsSync(oldPath)) {
               try { 
                 fs.unlinkSync(oldPath);
-                console.log(`Deleted profile picture: ${oldPath}`);
               } catch (err) {
                 console.error(`Error deleting profile picture: ${oldPath}`, err);
               }
-            } else {
-              console.log('File does not exist at path:', oldPath);
             }
-          } else {
-            console.log('Could not extract filename from profile_picture:', user.profile_picture);
           }
         } catch (err) {
           console.error('Error processing profile picture removal:', err);
         }
       }
       user.profile_picture = '';
-      console.log('Profile picture field cleared');
     } else if (req.file) {
       // Delete old profile picture if exists
       if (user.profile_picture) {
@@ -1771,7 +1718,6 @@ app.patch('/api/user/profile', authenticateToken, upload.single('profilePicture'
         if (fs.existsSync(oldPath)) {
           try { 
             fs.unlinkSync(oldPath);
-            console.log(`Deleted old profile picture: ${oldPath}`);
           } catch (err) {
             console.error(`Error deleting old profile picture: ${oldPath}`, err);
           }
@@ -1781,7 +1727,6 @@ app.patch('/api/user/profile', authenticateToken, upload.single('profilePicture'
     }
 
     await user.save();
-    console.log('User saved with profile_picture:', user.profile_picture);
 
     // Return updated user
     const responseData = {
@@ -1792,8 +1737,6 @@ app.patch('/api/user/profile', authenticateToken, upload.single('profilePicture'
       location: user.location,
       profile_picture: user.profile_picture
     };
-    
-    console.log('Sending response:', responseData);
     
     res.json(responseData);
   } catch (error) {
@@ -1898,8 +1841,6 @@ app.get('/api/user/voted-polls', authenticateToken, async (req, res) => {
         poll.comments_count = actualCommentCount;
         await poll.save();
         
-        console.log(`📊 User Voted Poll "${poll.title}" - Comment count updated to: ${actualCommentCount}`);
-        
         return poll;
       })
     );
@@ -1928,8 +1869,6 @@ app.get('/api/polls', authenticateToken, async (req, res) => {
         // Force update comment count regardless of current value
         poll.comments_count = actualCommentCount;
         await poll.save();
-        
-        console.log(`📊 Poll "${poll.title}" - Comment count updated to: ${actualCommentCount}`);
         
         return poll;
       })
@@ -2122,7 +2061,6 @@ app.get('/api/chat/history', authenticateToken, async (req, res) => {
 });
 
 
-
 // Socket.IO authentication middleware
 io.use((socket, next) => {
   try {
@@ -2162,23 +2100,20 @@ io.use((socket, next) => {
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('🔗 Socket connected:', socket.id, 'User:', socket.user?.username);
+  console.log('Socket connected:', socket.id, 'User:', socket.user?.username);
   
   // Automatically join user to their personal room for notifications
   if (socket.user?.id) {
     socket.join(`user_${socket.user.id}`);
-    console.log('📡 User', socket.user.username, 'joined notification room:', `user_${socket.user.id}`);
   }
 
   // Join user to their personal room for notifications (legacy support)
   socket.on('join', (userId) => {
-    console.log('📡 Join request for user:', userId, 'from socket user:', socket.user?.id);
     // Verify the userId matches the authenticated user
     if (socket.user?.id === userId) {
       socket.join(`user_${userId}`);
-      console.log('✅ User', socket.user.username, 'successfully joined room:', `user_${userId}`);
     } else {
-      console.warn('⚠️ Invalid join request: user', socket.user?.id, 'tried to join room for user', userId);
+      console.warn('Invalid join request: user', socket.user?.id, 'tried to join room for user', userId);
     }
   });
 
@@ -2375,14 +2310,14 @@ const PORT = process.env.PORT || 8001;
 
 // Enhanced server startup with health monitoring
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🗺️ API Base URL: http://localhost:${PORT}/api`);
+  console.log(`Server running on port ${PORT}`);
+
+  console.log(`Health check: http://localhost:${PORT}/api/health`);
+  console.log(`API Base URL: http://localhost:${PORT}/api`);
   
   // Log memory usage
   const memUsage = process.memoryUsage();
-  console.log(`📦 Memory usage: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
+  console.log(`Memory usage: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
 });
 
 // Graceful shutdown handling
@@ -2390,21 +2325,21 @@ process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
 function gracefulShutdown(signal) {
-  console.log(`⚠️ Received ${signal}. Starting graceful shutdown...`);
+  console.log(`Received ${signal}. Starting graceful shutdown...`);
   
   server.close(() => {
-    console.log('👋 HTTP server closed.');
+    console.log('HTTP server closed.');
     
     // Close database connection
     mongoose.connection.close(false, () => {
-      console.log('📛 MongoDB connection closed.');
+      console.log('MongoDB connection closed.');
       process.exit(0);
     });
   });
   
   // Force close after 10 seconds
   setTimeout(() => {
-    console.error('⚠️ Could not close connections in time, forcefully shutting down');
+    console.error('Could not close connections in time, forcefully shutting down');
     process.exit(1);
   }, 10000);
 }
@@ -2414,7 +2349,6 @@ function gracefulShutdown(signal) {
 cron.schedule('* * * * *', async () => {
   try {
     const currentTime = new Date();
-    console.log(`🕐 Checking for expired polls at ${currentTime.toISOString()}...`);
     
     // Find all active polls that have passed their end date
     // We auto-close polls that either:
@@ -2426,13 +2360,8 @@ cron.schedule('* * * * *', async () => {
     });
     
     if (expiredPolls.length > 0) {
-      console.log(`📅 Found ${expiredPolls.length} expired poll(s) to close`);
-      
       for (const poll of expiredPolls) {
         try {
-          const pollEndTime = new Date(poll.ends_at);
-          console.log(`🔄 Closing poll "${poll.title}" - End time: ${pollEndTime.toISOString()}, Current time: ${currentTime.toISOString()}`);
-          
           // Update poll status to closed
           poll.status = 'closed';
           // Clear the end date when poll expires automatically
@@ -2442,8 +2371,6 @@ cron.schedule('* * * * *', async () => {
           // to allow future automatic closures if user sets new end dates
           poll.manual_status_override = false;
           await poll.save();
-          
-          console.log(`✅ Automatically closed poll: "${poll.title}" (ID: ${poll.id})`);
           
           // Create notification for poll creator
           await createNotification('poll_closed', {
@@ -2464,26 +2391,24 @@ cron.schedule('* * * * *', async () => {
           });
           
         } catch (pollError) {
-          console.error(`❌ Error closing poll ${poll.id}:`, pollError);
+          console.error(`Error closing poll ${poll.id}:`, pollError);
         }
       }
-    } else {
-      console.log('📊 No expired polls found');
     }
   } catch (error) {
-    console.error('❌ Poll closure cron job error:', error);
+    console.error('Poll closure cron job error:', error);
   }
 });
 
-console.log('⏰ Automatic poll closure system initialized - checking every minute for expired polls');
+console.log('Automatic poll closure system initialized - checking every minute for expired polls');
 
 // Monitor for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
   process.exit(1);
 });
 
